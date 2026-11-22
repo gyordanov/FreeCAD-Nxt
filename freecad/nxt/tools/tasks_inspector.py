@@ -25,7 +25,7 @@ from . import task_layout
 FIND_MS = 500
 MIN_HEIGHT = 160
 #: The most of the panel the workbench's boxes may take.
-BOXES_SHARE = 0.4
+BOXES_SHARE = 0.6
 
 
 #: The task view's signals that mean what is shown may have changed;
@@ -192,7 +192,7 @@ class TasksInspector(QtCore.QObject):
             layout.setStretch(index, 0)
 
     def _fit_boxes(self, page: Any) -> None:
-        """The boxes' area is as tall as its boxes, up to a share, or none.
+        """The boxes' area is exactly as tall as its boxes, up to a share.
 
         Only its height limits change, never its visibility: a dialog on
         the same page puts its own content there.
@@ -221,8 +221,11 @@ class TasksInspector(QtCore.QObject):
             height = inner.sizeHint().height() + 2 * area.frameWidth()
             if page.height() > 0:
                 height = min(height, int(page.height() * BOXES_SHARE))
+        # Both limits: a scroll area gives way to the view's tall size hint
+        # down to its minimum, which would leave the boxes a sliver.
         area.setMinimumHeight(0)
         area.setMaximumHeight(height)
+        area.setMinimumHeight(height)
 
     def _free_area(self) -> None:
         area, limits = self._area, self._limits

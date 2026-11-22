@@ -153,6 +153,7 @@ class PerDocumentPageTests(_Base):
         area = area_of(self.first)
         self.assertGreaterEqual(area.maximumHeight(), 60)
         self.assertLess(area.maximumHeight(), 16777215)
+        self.assertEqual(area.minimumHeight(), area.maximumHeight())
 
     def test_boxes_are_as_found_when_parked_gone_or_unneeded(self) -> None:
         area = area_of(self.first)
