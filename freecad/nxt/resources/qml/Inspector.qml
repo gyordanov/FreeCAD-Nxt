@@ -24,8 +24,30 @@ Rectangle {
     //: for, or while filtering.
     property bool restOpened: false
     readonly property bool restShown: restOpened || filter.text.length > 0
-    //: Names on the left, editors beside them, alike down every card.
-    readonly property real labelWidth: Math.min(96, Math.round(width * 0.28))
+    //: Names on the left, editors beside them, alike down every card:
+    //: as wide as the longest name shown, within [64, 42% of the panel].
+    readonly property real labelWidth: Math.max(64, Math.min(
+        Math.round(width * 0.42), root.widestLabel + 10))
+    readonly property real widestLabel: {
+        var widest = 0;
+        var cards = inspector.groups || [];
+        for (var i = 0; i < cards.length; ++i) {
+            var lists = [cards[i].items || [], cards[i].after || []];
+            var columns = cards[i].columns || [];
+            for (var c = 0; c < columns.length; ++c)
+                lists.push(columns[c].items || []);
+            for (var l = 0; l < lists.length; ++l)
+                for (var j = 0; j < lists[l].length; ++j)
+                    widest = Math.max(widest, labelMetrics.advanceWidth(
+                                          lists[l][j].label || ""));
+        }
+        return Math.ceil(widest);
+    }
+
+    FontMetrics {
+        id: labelMetrics
+        font.pixelSize: theme.fontSmall
+    }
 
 
     Row {

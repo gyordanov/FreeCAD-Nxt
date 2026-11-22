@@ -43,6 +43,15 @@ Row {
             font.pixelSize: theme.fontSmall
             color: theme.textDim
             elide: Text.ElideRight
+
+            HoverHandler { id: labelHover }
+            NxtToolTip {
+                shown: labelHover.hovered
+                text: parent.truncated || field.spec.tip
+                      ? (field.spec.label || "")
+                        + (field.spec.tip ? "\n" + field.spec.tip : "")
+                      : ""
+            }
         }
         Text {
             id: marker

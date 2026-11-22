@@ -221,6 +221,24 @@ check("groups are FreeCAD's, own group first",
 check("labels split like the native panel", "Local Coord" in shown)
 check("the unit sits apart from the number", "mm" in shown)
 
+
+def label_texts(root: Any) -> list[Any]:
+    names = {e["label"] for g in bridge.groups for e in g["items"]
+             if e.get("label")}
+    return [i for i in items_of(root, "QQuickText")
+            if i.property("text") in names]
+
+
+check("a wide panel shows every label whole",
+      not any(i.property("truncated") for i in label_texts(root)))
+view.resize(160, 900)
+settle()
+narrow = label_texts(root)
+check("the label column keeps within its cap when narrow",
+      all(i.property("width") <= 0.42 * 160 for i in narrow))
+view.resize(340, 900)
+settle()
+
 pitch = next(i for i in items_of(root, "QQuickTextInput")
              if i.property("text") == "5.00")
 click(view, pitch)
