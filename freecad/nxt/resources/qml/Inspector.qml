@@ -11,6 +11,9 @@ Rectangle {
 
     //: Inside a task dialog: no filter or tabs, no background of its own.
     property bool bare: false
+    //: The selection's name above the filter, where no frame shows it.
+    property bool titled: false
+    readonly property bool showTitle: titled && !bare
     //: The cards, whose height the task dialog sizes itself to.
     readonly property alias cards: groups
     //: Room the warning above the cards takes.
@@ -50,10 +53,34 @@ Rectangle {
     }
 
 
+    Item {
+        id: heading
+        x: root.pad
+        y: root.pad
+        width: root.width - 2 * root.pad
+        visible: root.showTitle
+        height: root.showTitle ? name.implicitHeight : 0
+
+        Text {
+            id: name
+            width: parent.width
+            text: inspector.title
+            elide: Text.ElideRight
+            font.pixelSize: theme.fontRow
+            font.bold: true
+            color: theme.text
+        }
+        HoverHandler { id: headingHover }
+        NxtToolTip {
+            shown: headingHover.hovered && name.truncated
+            text: name.text
+        }
+    }
+
     Row {
         id: top
         x: root.pad
-        y: root.pad
+        y: root.pad + (root.showTitle ? heading.height + root.gap / 2 : 0)
         width: root.width - 2 * root.pad
         spacing: root.gap
         height: root.bare ? 0 : theme.fieldHeight

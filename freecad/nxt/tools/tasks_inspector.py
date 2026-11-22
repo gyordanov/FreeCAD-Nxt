@@ -24,6 +24,8 @@ from . import task_layout
 #: whether or not FreeCAD's signals say so.
 FIND_MS = 500
 MIN_HEIGHT = 160
+#: The most of the panel the workbench's boxes may take.
+BOXES_SHARE = 0.4
 
 
 #: The task view's signals that mean what is shown may have changed;
@@ -53,6 +55,9 @@ class TasksInspector(QtCore.QObject):
         #: was before they gave way (None while restored).
         self._layout: Any = None
         self._stretch: list[tuple[int, int]] | None = None
+        #: The boxes' scroll area, and its min and max height as found.
+        self._area: Any = None
+        self._limits: tuple[int, int] | None = None
         self._tick = QtCore.QTimer(self)
         self._tick.setInterval(FIND_MS)
         self._tick.timeout.connect(self._evaluate)
@@ -127,6 +132,9 @@ class TasksInspector(QtCore.QObject):
         view.nxt_paint = paint  # type: ignore[attr-defined]
         self._view = view
         self._bridge = view.nxt_bridge
+        root = view.rootObject()
+        if root is not None:
+            root.setProperty("titled", True)
         self._bridge.changed.connect(self._sync_empty)
         self._polling = False
         self._layout = None
@@ -169,6 +177,7 @@ class TasksInspector(QtCore.QObject):
             layout.addWidget(self._view, 1)
         if self._stretch is None:
             self._squeeze(layout)
+        self._fit_boxes(page)
         if not self._polling:
             self._polling = True
             self._bridge.start()
@@ -182,7 +191,48 @@ class TasksInspector(QtCore.QObject):
         for index, _stretch in self._stretch:
             layout.setStretch(index, 0)
 
+    def _fit_boxes(self, page: Any) -> None:
+        """The boxes' area is as tall as its boxes, up to a share, or none.
+
+        Only its height limits change, never its visibility: a dialog on
+        the same page puts its own content there.
+        """
+        if not self._bridge.title:      # no inspector: no cap on the boxes
+            self._free_area()
+            return
+        areas = page.findChildren(
+            QtWidgets.QScrollArea,
+            options=QtCore.Qt.FindChildOption.FindDirectChildrenOnly)
+        if not areas:
+            return
+        area = areas[0]
+        if area is not self._area:
+            self._free_area()
+            self._area = area
+        if self._limits is None:
+            self._limits = (area.minimumHeight(), area.maximumHeight())
+        inner = area.widget()
+        shown = [w for w in inner.findChildren(
+            QtWidgets.QWidget,
+            options=QtCore.Qt.FindChildOption.FindDirectChildrenOnly)
+            if w.isVisibleTo(inner)] if inner is not None else []
+        height = 0
+        if shown:
+            height = inner.sizeHint().height() + 2 * area.frameWidth()
+            if page.height() > 0:
+                height = min(height, int(page.height() * BOXES_SHARE))
+        area.setMinimumHeight(0)
+        area.setMaximumHeight(height)
+
+    def _free_area(self) -> None:
+        area, limits = self._area, self._limits
+        self._area = self._limits = None
+        if limits is not None and widgets.alive(area):
+            area.setMinimumHeight(limits[0])
+            area.setMaximumHeight(limits[1])
+
     def _unsqueeze(self) -> None:
+        self._free_area()
         layout, saved = self._layout, self._stretch
         self._stretch = None
         if saved is not None and widgets.alive(layout):
@@ -201,3 +251,5 @@ class TasksInspector(QtCore.QObject):
         """Nothing selected, or a dialog up: no room is taken."""
         if widgets.alive(self._view) and self._polling:
             self._view.setVisible(bool(self._bridge.title))
+            if widgets.alive(self._layout):
+                self._fit_boxes(self._layout.parentWidget())

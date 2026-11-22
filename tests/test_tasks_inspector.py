@@ -54,10 +54,26 @@ class Tasks(QtWidgets.QStackedWidget):
         main = QtWidgets.QVBoxLayout(page)
         main.addLayout(QtWidgets.QVBoxLayout())          # contextual boxes
         dialog = QtWidgets.QVBoxLayout()
-        dialog.addWidget(QtWidgets.QScrollArea())        # the watchers
+        area = QtWidgets.QScrollArea()                   # the watchers
+        inner = QtWidgets.QWidget()
+        QtWidgets.QVBoxLayout(inner)
+        area.setWidget(inner)
+        dialog.addWidget(area)
         main.addLayout(dialog, 1)
         self.addWidget(page)
         return page
+
+
+def area_of(page: Any) -> Any:
+    return page.findChildren(QtWidgets.QScrollArea)[0]
+
+
+def add_box(page: Any) -> None:
+    """A workbench box appears among the watchers."""
+    inner = area_of(page).widget()
+    box = QtWidgets.QLabel("Fillet", inner)
+    box.setMinimumHeight(60)
+    inner.layout().addWidget(box)
 
 
 def stretches(page: Any) -> list[int]:
@@ -69,12 +85,16 @@ class _Base(unittest.TestCase):
 
     def setUp(self) -> None:
         self.tasks = Tasks()
+        self.root = types.SimpleNamespace(
+            setProperty=lambda k, v: self.props.__setitem__(k, v))
+        self.props: dict[str, Any] = {}
         self.dialog = False
         self.bridges: list[Bridge] = []
 
         def make(parent: Any) -> Any:
             view = QtWidgets.QLabel("inspector", parent)
             view.nxt_bridge = Bridge()   # type: ignore[attr-defined]
+            view.rootObject = lambda: self.root   # type: ignore
             self.bridges.append(view.nxt_bridge)
             return view
 
@@ -116,6 +136,46 @@ class PerDocumentPageTests(_Base):
         self.assertIs(self.last(self.first), self.part._view)
         self.assertEqual(stretches(self.first), [0, 0, 1])
         self.assertTrue(self.bridges[0].running)
+
+    def test_it_shows_the_title(self) -> None:
+        self.assertEqual(self.props, {"titled": True})
+
+    def test_empty_boxes_take_no_height(self) -> None:
+        self.select()
+        area = area_of(self.first)
+        self.assertEqual(area.maximumHeight(), 0)
+        self.assertEqual(area.minimumHeight(), 0)
+
+    def test_boxes_take_their_height_when_they_appear(self) -> None:
+        self.select()
+        add_box(self.first)
+        self.tasks.taskUpdate.emit()
+        area = area_of(self.first)
+        self.assertGreaterEqual(area.maximumHeight(), 60)
+        self.assertLess(area.maximumHeight(), 16777215)
+
+    def test_boxes_are_as_found_when_parked_gone_or_unneeded(self) -> None:
+        area = area_of(self.first)
+        found = (area.minimumHeight(), area.maximumHeight())
+        self.select()
+        self.assertNotEqual(area.maximumHeight(), found[1])
+        self.dialog = True
+        self.tasks.taskUpdate.emit()
+        self.assertEqual((area.minimumHeight(), area.maximumHeight()), found)
+        self.assertFalse(area.isHidden())
+        self.dialog = False
+        self.tasks.taskUpdate.emit()
+        self.assertEqual(area.maximumHeight(), 0)
+        self.select("")                 # nothing selected: no cap
+        self.assertEqual((area.minimumHeight(), area.maximumHeight()), found)
+        self.select()
+        second = self.tasks.panel()
+        self.tasks.setCurrentWidget(second)
+        self.assertEqual((area.minimumHeight(), area.maximumHeight()), found)
+        self.assertEqual(area_of(second).maximumHeight(), 0)
+        self.part.remove()
+        self.assertEqual((area_of(second).minimumHeight(),
+                          area_of(second).maximumHeight()), found)
 
     def test_it_takes_no_room_with_nothing_selected(self) -> None:
         self.assertTrue(self.part._view.isHidden())
@@ -213,6 +273,15 @@ class IdlePageTests(_Base):
         self.assertTrue(self.bridges[0].running)
         self.assertEqual(stretches(self.idle), [0, 0, 1])
         self.assertEqual(len(self.bridges), 1)
+
+    def test_the_idle_boxes_are_restored_while_a_dialog_is_up(self) -> None:
+        area = area_of(self.idle)
+        self.assertEqual(area.maximumHeight(), 0)
+        dialog = self.tasks.panel()
+        self.dialog = True
+        self.tasks.setCurrentWidget(dialog)
+        self.assertEqual(area.maximumHeight(), 16777215)
+        self.assertEqual(area_of(dialog).maximumHeight(), 16777215)
 
     def test_nothing_to_find_is_not_an_error(self) -> None:
         self.part.remove()

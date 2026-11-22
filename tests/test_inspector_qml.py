@@ -327,6 +327,24 @@ mixed = [i for i in items_of(root, "QQuickText")
 check("a differing value shows as mixed", len(mixed) == 1)
 finish(view, bridge)
 
+# --- the title, for a host without a frame ------------------------------- #
+print("titled")
+bridge = Bridge(inspector.describe([fakes.helix()]))
+view, root = load(bridge)
+
+
+def titles() -> int:
+    return len([i for i in items_of(root, "QQuickText")
+                if i.property("text") == "Helix" and i.property("visible")])
+
+
+before = titles()
+root.setProperty("titled", True)
+settle()
+check("the selection's title shows above the filter only when asked",
+      titles() == before + 1)
+finish(view, bridge)
+
 # --- a Pad, laid out by its template ------------------------------------- #
 print("template: PartDesign::Pad")
 bridge = Bridge(inspector.describe([pads.modern(SideType="Two sides")]))
