@@ -45,6 +45,7 @@ class Services(QtCore.QObject):
         self._sketch_panel: Any = None
         self._tool_strip: Any = None
         self._occlusion: Any = None
+        self._tasks_inspector: Any = None
         self._pending_edit: tuple[str, str] | None = None
         self._edit_timer = self._deferral(self._enter_pending_edit)
         self._restyle_timer = self._deferral(self._restyle)
@@ -123,12 +124,14 @@ class Services(QtCore.QObject):
         except Exception:
             log.error("could not install the stale drag guard")
             self._drag_guard = None
+        self.tasks_inspector_changed()
         self.quick_mass_changed()
         self._install_sketch_panel()
         self.tool_strip_changed()
         self.ambient_occlusion_changed()
 
     def remove(self) -> None:
+        self._remove_tasks_inspector()
         self._remove_isolation()
         self._remove_tool_strip()
         self._remove_occlusion()
@@ -269,6 +272,36 @@ class Services(QtCore.QObject):
         except Exception:
             log.error("could not remove the tool strip")
         self._tool_strip = None
+
+    # -- properties in the Tasks panel -- #
+
+    def tasks_inspector_changed(self) -> None:
+        """Put the inspector in the Tasks panel, or take it out again."""
+        from ..core import settings
+        if not settings.get("InspectorInTasks"):
+            self._remove_tasks_inspector()
+            return
+        if self._tasks_inspector is not None:
+            return
+        try:
+            from ..inspector import host
+            from ..tools.tasks_inspector import TasksInspector
+            host.close()        # the floating window gives way
+            self._tasks_inspector = TasksInspector(self)
+            self._tasks_inspector.install()
+        except Exception:
+            log.error("could not put the inspector in the Tasks panel")
+            self._remove_tasks_inspector()
+
+    def _remove_tasks_inspector(self) -> None:
+        if self._tasks_inspector is None:
+            return
+        try:
+            self._tasks_inspector.remove()
+        except Exception:
+            log.error("could not remove the inspector from the Tasks panel")
+        self._tasks_inspector.deleteLater()
+        self._tasks_inspector = None
 
     # -- ambient occlusion -- #
 

@@ -78,7 +78,7 @@ def _no_qml_page(_parent: object) -> object:
 # These tests are about borrowing FreeCAD's own editor, so the QML page is
 # kept out of the way. (It used to be kept out by accident: building it
 # asked the panel for a theme, which the panel stub above does not have.)
-property_inspector._make_inspector = _no_qml_page  # type: ignore[assignment]
+property_inspector.make_inspector = _no_qml_page  # type: ignore[assignment]
 
 
 def settle() -> None:
@@ -346,12 +346,29 @@ class InspectorPageTests(_Harness):
             page.nxt_bridge = self.bridge
             return page
 
-        self._real = property_inspector._make_inspector
-        property_inspector._make_inspector = make
+        self._real = property_inspector.make_inspector
+        property_inspector.make_inspector = make
 
     def tearDown(self) -> None:
-        property_inspector._make_inspector = self._real
+        property_inspector.make_inspector = self._real
         super().tearDown()
+
+    def test_in_the_tasks_panel_nothing_floats(self) -> None:
+        shown: list[str] = []
+        Gui.Control = types.SimpleNamespace(
+            showTaskView=lambda: shown.append("tasks"))
+        self.addCleanup(delattr, Gui, "Control")
+        FakeParams.store["InspectorInTasks"] = True
+        property_inspector.open_inspector(100, 100)
+        property_inspector.toggle()
+        settle()
+        self.assertFalse(property_inspector.is_open())
+        self.assertIsNone(property_inspector._inspector)
+        self.assertEqual(shown, ["tasks", "tasks"])
+
+    def test_the_setting_is_off_by_default(self) -> None:
+        self.assertFalse(property_inspector.settings.DEFAULTS[
+            "InspectorInTasks"])
 
     def test_opening_shows_the_inspector_and_borrows_nothing(self) -> None:
         dock = self.dock()

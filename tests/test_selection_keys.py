@@ -583,8 +583,11 @@ class AutoDetailTests(unittest.TestCase):
         self.bridge.rowHeld.connect(self.held.append)
         self.on = True
         original = bridge_mod.settings.get
+        self.in_tasks = False
         bridge_mod.settings.get = lambda key: (
-            self.on if key == "DetailAutoShow" else original(key))
+            self.on if key == "DetailAutoShow"
+            else self.in_tasks if key == "InspectorInTasks"
+            else original(key))
         self.addCleanup(setattr, bridge_mod.settings, "get", original)
 
     def start(self) -> None:
@@ -605,6 +608,17 @@ class AutoDetailTests(unittest.TestCase):
         self.on = False
         self.click("B")
         self.assertEqual(self.bridge._tree.open, set())
+
+    def test_the_inspector_in_the_tasks_panel_takes_the_strip_over(
+            self) -> None:
+        self.click("B")
+        self.bridge.toggleDetailPin("D")
+        self.in_tasks = True
+        self.click("C")
+        self.assertEqual(self.bridge._tree.open, {"B"})
+        self.bridge.refresh_auto_detail()   # the mode turned on
+        self.assertEqual(self.bridge._tree.open, set())
+        self.assertEqual(self.bridge.pinnedDetails, ["D"])
 
     def test_a_click_starts_the_wait_and_a_ctrl_click_ends_it(self) -> None:
         self.bridge.select("B", False)

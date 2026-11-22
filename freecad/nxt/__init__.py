@@ -34,6 +34,7 @@ _RELOAD_ORDER = (
     "freecad.nxt.tools.task_sync",
     "freecad.nxt.inspector.bridge",
     "freecad.nxt.tools.task_layout",
+    "freecad.nxt.tools.tasks_inspector",
     "freecad.nxt.tree.reorder",
     "freecad.nxt.tree.picking",
     "freecad.nxt.tools.editing",

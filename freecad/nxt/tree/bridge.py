@@ -728,6 +728,7 @@ class TreeBridge(QtCore.QObject):
         """Open the clicked row's strip and close the last unpinned one."""
         name = self._auto_name
         if not settings.get("DetailAutoShow") or not name \
+                or settings.get("InspectorInTasks") \
                 or self._selected_names() != [name]:
             return
         last = self._auto_detail
@@ -744,8 +745,15 @@ class TreeBridge(QtCore.QObject):
         """Apply a DetailAutoShow change; turning it off closes its strips.
 
         The strip it opened, and any pinned, close with it: pins only mean
-        anything while clicks open strips.
+        anything while clicks open strips. With `InspectorInTasks` the
+        click opens none, so the one it opened is closed.
         """
+        if settings.get("InspectorInTasks"):
+            self._auto_timer.stop()
+            last = self._auto_detail
+            if last and last not in self._pinned:
+                self._tree.close_details([last])
+            self._auto_detail = ""
         if not settings.get("DetailAutoShow"):
             self._auto_timer.stop()
             opened = {self._auto_detail} | self._pinned

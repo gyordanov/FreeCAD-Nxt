@@ -355,7 +355,7 @@ class PropertyInspector(QtWidgets.QFrame):
         if self._inspector_failed:
             return False
         try:
-            self._inspector = _make_inspector(self._pages)
+            self._inspector = make_inspector(self._pages)
         except Exception:
             self._inspector_failed = True
             App.Console.PrintError("Nxt: the Property Inspector fell back to "
@@ -611,7 +611,7 @@ def _panel_takes(event: QtGui.QMouseEvent) -> bool:
     return overlay is not None and bool(overlay.take(event))
 
 
-def _make_inspector(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+def make_inspector(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """The QML page: Inspector.qml on its own QQuickWidget."""
     from ..app import services
     from ..ui import quick_host
@@ -645,10 +645,22 @@ def _instance() -> PropertyInspector | None:
 
 
 def open_inspector(left: int | None = None, top: int | None = None) -> None:
-    """Open the inspector with its top-left at global (`left`, `top`)."""
+    """Open the inspector with its top-left at global (`left`, `top`).
+
+    With `InspectorInTasks` the Tasks panel is shown instead: it holds it.
+    """
+    if settings.get("InspectorInTasks"):
+        show_tasks()
+        return
     inspector = _instance()
     if inspector is not None:
         inspector.open_at(left, top)
+
+
+def show_tasks() -> None:
+    """Reveal FreeCAD's Tasks panel, where the inspector lives."""
+    with contextlib.suppress(Exception):
+        Gui.Control.showTaskView()
 
 
 def close() -> None:
@@ -675,6 +687,9 @@ def is_open() -> bool:
 
 def toggle() -> None:
     """Close the inspector, or open it beside the selected row."""
+    if settings.get("InspectorInTasks"):
+        show_tasks()
+        return
     if is_open():
         close()
         return

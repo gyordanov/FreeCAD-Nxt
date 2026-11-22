@@ -106,6 +106,9 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     # Inspector geometry; a size of 0 means never placed.
     "InspectorPinned": False,
     "InspectorTable": False,
+    # The inspector lives in the Tasks panel, not a floating window
+    # (tools/tasks_inspector.py).
+    "InspectorInTasks": False,
     "InspectorX": 0,
     "InspectorY": 0,
     "InspectorWidth": 0,

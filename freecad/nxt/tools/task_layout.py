@@ -51,7 +51,7 @@ def _dialog_open() -> bool:
         return False
 
 
-def _task_view() -> Any:
+def task_view() -> Any:
     main = Gui.getMainWindow()
     if main is None:
         return None
@@ -87,7 +87,7 @@ class NativeChoices(QtCore.QObject):
         return chosen.get(picked, "")
 
 
-class _Keyboard(QtCore.QObject):
+class Keyboard(QtCore.QObject):
     """A press in the view gives it the keyboard, as a field expects.
 
     In FreeCAD's overlay mode the panel floats over the 3D view, whose
@@ -115,7 +115,7 @@ class _Keyboard(QtCore.QObject):
         return False
 
 
-class _Repaint(QtCore.QObject):
+class Repaint(QtCore.QObject):
     """Repaint what holds the view after each frame it draws.
 
     In FreeCAD's overlay mode the task panel is drawn by its overlay,
@@ -170,7 +170,7 @@ class _Confirm(QtCore.QObject):
         super().__init__(cards)
         self._cards = cards
         self._bridge = bridge
-        view = _task_view()
+        view = task_view()
         boxes = (view.findChildren(QtWidgets.QDialogButtonBox)
                  if view is not None else [])
         for box in boxes:
@@ -198,7 +198,7 @@ def tab_in_order(cards: Any) -> None:
     options and OK, not off to the rest of the window, which is where
     the focus chain leads from a view added after the dialog was built.
     """
-    view = _task_view()
+    view = task_view()
     if view is None or not widgets.alive(cards):
         return
     found = []
@@ -258,7 +258,7 @@ class TaskLayout(QtCore.QObject):
     def _watch(self) -> None:
         if widgets.alive(self._view):
             return
-        view = _task_view()
+        view = task_view()
         if view is self._view:
             return
         if widgets.alive(self._view):
@@ -349,8 +349,8 @@ def fitted_view(holder: Any, source: str, context: dict[str, Any],
     cards = quick_host.make_view(
         holder, source, {"theme": theme, **context}, prepare=prepare)
     cards.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
-    cards.nxt_keys = _Keyboard(cards)  # type: ignore[attr-defined]
-    cards.nxt_paint = _Repaint(cards)  # type: ignore[attr-defined]
+    cards.nxt_keys = Keyboard(cards)  # type: ignore[attr-defined]
+    cards.nxt_paint = Repaint(cards)  # type: ignore[attr-defined]
     cards.setClearColor(QtGui.QColor(theme.background))
     root = cards.rootObject()
 

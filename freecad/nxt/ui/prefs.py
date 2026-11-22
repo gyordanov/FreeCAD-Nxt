@@ -65,12 +65,17 @@ def apply(keys: set[str] | frozenset[str]) -> None:
             bridge = panel.bridge()
             if bridge is not None:
                 bridge.refresh_related()
-        if "DetailAutoShow" in keys:
+        if keys & {"DetailAutoShow", "InspectorInTasks"}:
             bridge = panel.bridge()
             if bridge is not None:
                 bridge.refresh_auto_detail()
     if menu_button.SETTING in keys:
         menu_button.apply()
+    if "InspectorInTasks" in keys:
+        from ..app import services
+        live = services.instance()
+        if live is not None:
+            live.tasks_inspector_changed()
     if "QuickMass" in keys:
         from ..app import services
         live = services.instance()
@@ -224,6 +229,14 @@ class NxtPreferencesPage:
         self._auto_detail = QtWidgets.QCheckBox(translate(
             "Nxt", "Show a row's details when it is clicked"), tree)
         layout.addRow(self._auto_detail)
+        self._in_tasks = QtWidgets.QCheckBox(translate(
+            "Nxt", "Show properties in the Tasks panel (experimental)"),
+            tree)
+        self._in_tasks.setToolTip(translate(
+            "Nxt", "The selection's properties sit under the workbench's "
+                   "boxes in the Tasks panel, in place of the floating "
+                   "inspector and the row details shown on a click."))
+        layout.addRow(self._in_tasks)
         outer.addWidget(tree)
 
         panel = QtWidgets.QGroupBox(translate("Nxt", "Panel"), self.form)
@@ -345,6 +358,7 @@ class NxtPreferencesPage:
         self._arrows.setChecked(bool(settings.get("DependencyArrows")))
         self._related.setChecked(bool(settings.get("HighlightRelated")))
         self._auto_detail.setChecked(bool(settings.get("DetailAutoShow")))
+        self._in_tasks.setChecked(bool(settings.get("InspectorInTasks")))
         self._lines.setChecked(bool(settings.get("TreeLines")))
         self._visible.setChecked(bool(settings.get("Visible")))
         self._percent.setValue(int(settings.get("HeaderMaxPercent")))
@@ -376,6 +390,7 @@ class NxtPreferencesPage:
         settings.put("DependencyArrows", self._arrows.isChecked())
         settings.put("HighlightRelated", self._related.isChecked())
         settings.put("DetailAutoShow", self._auto_detail.isChecked())
+        settings.put("InspectorInTasks", self._in_tasks.isChecked())
         settings.put("TreeLines", self._lines.isChecked())
         settings.put("Visible", self._visible.isChecked())
         settings.put("HeaderMaxPercent", self._percent.value())
@@ -395,7 +410,8 @@ class NxtPreferencesPage:
             "rotation": self._rotation.value(),
         })
         try:
-            apply(set(QUICK) | _VIEW | {menu_button.SETTING})
+            apply(set(QUICK) | _VIEW
+                  | {menu_button.SETTING, "InspectorInTasks"})
         except Exception as exc:
             App.Console.PrintError("Nxt: could not apply preferences: %s\n"
                                    % exc)
@@ -419,6 +435,8 @@ class NxtPreferencesPage:
             bool(settings.DEFAULTS["HighlightRelated"]))
         self._auto_detail.setChecked(
             bool(settings.DEFAULTS["DetailAutoShow"]))
+        self._in_tasks.setChecked(
+            bool(settings.DEFAULTS["InspectorInTasks"]))
         self._lines.setChecked(bool(settings.DEFAULTS["TreeLines"]))
         self._visible.setChecked(bool(settings.DEFAULTS["Visible"]))
         self._percent.setValue(int(settings.DEFAULTS["HeaderMaxPercent"]))
